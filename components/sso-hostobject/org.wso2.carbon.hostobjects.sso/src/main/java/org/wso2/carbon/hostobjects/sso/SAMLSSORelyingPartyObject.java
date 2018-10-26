@@ -534,6 +534,10 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
                                                                 Object[] args,
                                                                 Function funObj)
             throws Exception {
+
+        log.info("######################################### Inside jsFunction_validateSAMLResponseSchema #########################################");
+
+
         int argLength = args.length;
         if (argLength != 1 || !(args[0] instanceof String)) {
             throw new ScriptException("Invalid argument. The SAML response is missing.");
@@ -552,6 +556,9 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
         }
 
         String decodedString = isEncoded ? Util.decode((String) args[0]) : (String) args[0];
+        log.info("****************************** decodedString: " + decodedString);
+
+
         XMLObject samlObject = Util.unmarshall(decodedString);
 
         if (samlObject instanceof Response) {
@@ -596,6 +603,9 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
                                                           Object[] args,
                                                           Function funObj)
             throws Exception {
+
+        log.info("######################################### Inside jsFunction_getSAMLResponseNameId method  #########################################");
+
         int argLength = args.length;
         if (argLength != 1 || !(args[0] instanceof String)) {
             throw new ScriptException("Invalid argument. The SAML response is missing.");
@@ -615,24 +625,45 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
 
         String decodedString = isEncoded ? Util.decode((String) args[0]) : (String) args[0];
         XMLObject samlObject = Util.unmarshall(decodedString);
+
+        log.info("****************************** Decoded String(decodedString)-->" + decodedString);
+
         String username = null;
 
         if (samlObject instanceof Response) {
             Response samlResponse = (Response) samlObject;
             List<Assertion> assertions = samlResponse.getAssertions();
 
+            if (assertions == null) {
+                log.info("assertions==null --> true");
+            } else {
+                log.info("****************************** assertions not null.");
+                log.info("****************************** assertions size():" + assertions.size());
+
+                for (Assertion astn : assertions) {
+                    log.info(astn.getID());
+                    log.info("Time: " + astn.getIssueInstant().toDateTime().toString());
+                }
+            }
+
             // extract the username
             if (assertions != null && assertions.size() == 1) {
+
+                log.info("****************************** if (assertions != null && assertions.size() == 1) --> true");
+
                 Subject subject = assertions.get(0).getSubject();
                 if (subject != null) {
                     if (subject.getNameID() != null) {
                         username = subject.getNameID().getValue();
+                        log.info("********************************** Name of authenticated user from SAML response " + username);
+
                         if (log.isDebugEnabled()) {
                             log.debug("Name of authenticated user from SAML response " + username);
                         }
                     }
                 }
             } else {
+                log.info("****************************** if (assertions != null && assertions.size() == 1) --> false");
                 log.error("SAML Response contains invalid number of assertions.");
             }
 
@@ -837,6 +868,8 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
                                                           Object[] args,
                                                           Function funObj)
             throws Exception {
+        log.info("######################################### Inside jsFunction_setSessionAuthenticated method. #########################################");
+
         int argLength = args.length;
         if (argLength != 3 || !(args[0] instanceof String) ||
                 !(args[1] instanceof String) || !(args[2] instanceof SessionHostObject)) {
@@ -856,6 +889,8 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
         }
 
         String decodedString = isEncoded ? Util.decode((String) args[1]) : (String) args[1];
+        log.info("****************************** Decoded String(decodedString)-->" + decodedString);
+
         XMLObject samlObject = Util.unmarshall(decodedString);
         String sessionIndex = null;
         String username = null;
@@ -863,8 +898,22 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
             Response samlResponse = (Response) samlObject;
             List<Assertion> assertions = samlResponse.getAssertions();
 
+            if (assertions == null) {
+                log.info("assertions==null --> true");
+            } else {
+                log.info("****************************** assertions not null.");
+                log.info("****************************** assertions size():" + assertions.size());
+                for (Assertion astn : assertions) {
+                    log.info(astn.getID());
+                    log.info("Time: " + astn.getIssueInstant().toDateTime().toString());
+                }
+            }
+
             // extract the session index
             if (assertions != null && assertions.size() == 1) {
+
+                log.info("****************************** if (assertions != null && assertions.size() == 1) --> true");
+
                 Assertion assertion = assertions.get(0);
                 List<AuthnStatement> authenticationStatements = assertion.getAuthnStatements();
                 AuthnStatement authnStatement = authenticationStatements.get(0);
@@ -877,10 +926,13 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
                 if (subject != null) {
                     if (subject.getNameID() != null) {
                         username = subject.getNameID().getValue();
+                        log.info("****************************** username = subject.getNameID().getValue()--->" + username);
+
                     }
                 }
 
             } else {
+                log.info("****************************** if (assertions != null && assertions.size() == 1) --> false");
                 throw new ScriptException("SAML Response contains invalid number of assertions.");
             }
 
@@ -1374,8 +1426,15 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
      */
     private boolean validateAssertionValidityPeriod(Assertion assertion) throws ScriptException {
 
+        log.info("######################################### Inside validateAssertionValidityPeriod #########################################");
+
+
         DateTime validFrom = assertion.getConditions().getNotBefore();
         DateTime validTill = assertion.getConditions().getNotOnOrAfter();
+
+        log.info("***************************validFrom :" + validFrom);
+        log.info("***************************validTill :" + validTill);
+
 
         if (validFrom != null && validFrom.isAfterNow()) {
             log.error("SAML Response contains invalid number of assertions.");
@@ -1451,22 +1510,44 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
     public static boolean jsFunction_validateAssertionSignature(Context cx, Scriptable thisObj, Object[] args,
                                                                 Function funObj) throws Exception {
 
+        log.info("######################################### Inside jsFunction_validateAssertionSignature method #########################################");
+
+
         int argLength = args.length;
         if (argLength != 1 || !(args[0] instanceof String)) {
             throw new ScriptException("Invalid argument. SAML response is missing.");
         }
 
         String decodedString = Util.decode((String) args[0]);
+        log.info("****************************** decodedString: " + decodedString);
+
 
         XMLObject samlObject = Util.unmarshall(decodedString);
         String tenantDomain = Util.getDomainName(samlObject);
 
+        log.info("****************************** String tenantDomain = Util.getDomainName(samlObject);-->" + tenantDomain);
+
+
         int tenantId = Util.getRealmService().getTenantManager().getTenantId(tenantDomain);
+
+        log.info("****************************** tenantId -->" + tenantId);
+
 
         if (samlObject instanceof Response) {
             Response samlResponse = (Response) samlObject;
             SAMLSSORelyingPartyObject relyingPartyObject = (SAMLSSORelyingPartyObject) thisObj;
             List<Assertion> assertions = samlResponse.getAssertions();
+            if (assertions == null) {
+                log.info("assertions==null --> true");
+            } else {
+                log.info("****************************** assertions not null. Listing all the assertions:");
+                log.info("****************************** assertions size():" + assertions.size());
+                for (Assertion astn : assertions) {
+                    log.info(astn.getID());
+                    log.info("Time: " + astn.getIssueInstant().toDateTime().toString());
+                }
+            }
+
             boolean sigValid = false;
             // validate the assertion signature
             if (assertions != null && assertions.size() == 1) {
@@ -1507,6 +1588,7 @@ public class SAMLSSORelyingPartyObject extends ScriptableObject {
                     }
                 }
             } else {
+                log.info("****************************** if (assertions != null && assertions.size() == 1) --> false");
                 throw new ScriptException("SAML Response contains invalid number of assertions.");
             }
             return sigValid;
